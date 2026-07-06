@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { FaPlus, FaTimes, FaUpload, FaEdit, FaTrash, FaList } from 'react-icons/fa';
 import { API_URL } from './api';
 
+const NO_IMAGE_SVG = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='200' viewBox='0 0 300 200'%3E%3Crect width='300' height='200' fill='%23e9ecef'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='Inter,sans-serif' font-size='14' fill='%236c757d'%3ENo Image%3C/text%3E%3C/svg%3E`;
+
 const AdminPanel = ({ authToken, onUnauthorized }) => {
   const [view, setView] = useState('add'); // 'add', 'list'
   const [cars, setCars] = useState([]);
@@ -43,8 +45,8 @@ const AdminPanel = ({ authToken, onUnauthorized }) => {
         const data = await response.json();
         setCars(data);
       }
-    } catch (error) {
-      console.error('Error fetching cars:', error);
+    } catch {
+      setMessage('Unable to load cars.');
     }
   }, []);
 
@@ -61,7 +63,6 @@ const AdminPanel = ({ authToken, onUnauthorized }) => {
   };
 
 
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -69,13 +70,15 @@ const AdminPanel = ({ authToken, onUnauthorized }) => {
 
     try {
       const url = editingCar ? `${API_URL}/api/cars/${editingCar._id}` : `${API_URL}/api/cars`;
-      const method = editingCar ? 'PUT' : 'POST';
-      
+      const method = editingCar ? 'PATCH' : 'POST';
+
       const response = await fetch(url, {
         method,
         headers: getAuthHeaders(),
         body: JSON.stringify(carData)
       });
+
+      const data = await response.json();
 
       if (response.ok) {
         setMessage(editingCar ? 'Car updated successfully!' : 'Car added successfully!');
@@ -84,11 +87,12 @@ const AdminPanel = ({ authToken, onUnauthorized }) => {
       } else if (response.status === 401) {
         handleUnauthorized();
       } else {
-        setMessage(editingCar ? 'Failed to update car' : 'Failed to add car');
+        // Show actual server validation error
+        const reason = data?.error || data?.message || (editingCar ? 'Failed to update car' : 'Failed to add car');
+        setMessage(`Error: ${reason}`);
       }
-    } catch (error) {
-      console.error('Submit error:', error);
-      setMessage('Unable to save car. Please try again.');
+    } catch {
+      setMessage('Unable to save car. Please check your connection and try again.');
     } finally {
       setLoading(false);
     }
@@ -185,22 +189,24 @@ const AdminPanel = ({ authToken, onUnauthorized }) => {
         headers: { Authorization: `Bearer ${authToken}` }
       });
       
+      const data = await response.json().catch(() => ({}));
+      
       if (response.ok) {
         setMessage('Car deleted successfully!');
         fetchCars();
       } else if (response.status === 401) {
         handleUnauthorized();
       } else {
-        setMessage('Failed to delete car');
+        const reason = data?.error || data?.message || 'Failed to delete car';
+        setMessage(`Error: ${reason}`);
       }
-    } catch (error) {
-      console.error('Delete error:', error);
-      setMessage('Unable to delete car. Please try again.');
+    } catch {
+      setMessage('Unable to delete car. Please check your connection and try again.');
     }
   };
 
   return (
-    <div style={{ backgroundColor: '#f2f4f8', minHeight: '100vh', padding: 'clamp(0.5rem, 2vw, 2rem)' }}>
+    <div style={{ backgroundColor: '#f2f4f8', minHeight: '100vh', padding: 'clamp(0.5rem, 2vw, 2rem)', fontFamily: 'Inter, sans-serif' }}>
       <div style={{ maxWidth: '1000px', margin: '0 auto', backgroundColor: '#fff', borderRadius: '16px', padding: 'clamp(1rem, 3vw, 2rem)', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
           <h2 style={{ margin: 0, color: '#333' }}>Admin Panel</h2>
@@ -325,7 +331,7 @@ const AdminPanel = ({ authToken, onUnauthorized }) => {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
             {cars.map((car) => (
               <div key={car._id} style={{ backgroundColor: '#f8f9fa', borderRadius: '12px', padding: '1rem', border: '1px solid #dee2e6' }}>
-                <img src={car.images?.[0] || 'https://via.placeholder.com/300x200?text=No+Image'} alt={car.title} style={{ width: '100%', height: '150px', objectFit: 'cover', borderRadius: '8px', marginBottom: '0.5rem' }} />
+                <img src={car.images?.[0] || NO_IMAGE_SVG} alt={car.title} onError={(e) => { e.target.src = NO_IMAGE_SVG; }} style={{ width: '100%', height: '150px', objectFit: 'cover', borderRadius: '8px', marginBottom: '0.5rem' }} />
                 <h4 style={{ margin: '0 0 0.5rem 0' }}>{car.title}</h4>
                 <p style={{ margin: '0 0 0.5rem 0', fontWeight: 'bold', color: '#28a745' }}>KES {car.price?.toLocaleString()}</p>
                 <p style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', color: '#666' }}>{car.year} • {car.brand} {car.model}</p>
