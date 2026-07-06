@@ -189,16 +189,19 @@ const AdminPanel = ({ authToken, onUnauthorized }) => {
         headers: { Authorization: `Bearer ${authToken}` }
       });
       
+      const data = await response.json().catch(() => ({}));
+      
       if (response.ok) {
         setMessage('Car deleted successfully!');
         fetchCars();
       } else if (response.status === 401) {
         handleUnauthorized();
       } else {
-        setMessage('Failed to delete car');
+        const reason = data?.error || data?.message || 'Failed to delete car';
+        setMessage(`Error: ${reason}`);
       }
     } catch {
-      setMessage('Unable to delete car. Please try again.');
+      setMessage('Unable to delete car. Please check your connection and try again.');
     }
   };
 
