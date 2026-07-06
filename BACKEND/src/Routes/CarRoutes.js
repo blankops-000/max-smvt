@@ -7,6 +7,7 @@ const router = express.Router();
 router.get("/", getCar);
 router.post("/", requireAdmin, postCar);
 router.put("/:id", requireAdmin, updateCar);
+router.patch("/:id", requireAdmin, updateCar);
 router.delete("/:id", requireAdmin, deleteCar);
 
 export default router;

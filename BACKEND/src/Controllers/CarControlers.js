@@ -1,6 +1,7 @@
 import { getCarsTable, supabaseRequest } from "../config/supabase.js";
 
 const table = getCarsTable();
+const isProd = process.env.NODE_ENV === "production";
 
 const toClientCar = (row) => ({
   _id: row.id,
@@ -23,40 +24,65 @@ const toClientCar = (row) => ({
 });
 
 const toSupabaseCar = (body) => ({
-  title: body.title,
-  brand: body.brand,
-  model: body.model,
+  title: String(body.title || "").trim(),
+  brand: String(body.brand || "").trim(),
+  model: String(body.model || "").trim(),
   year: Number(body.year),
   price: Number(body.price),
   mileage: Number(body.mileage),
-  fuel_type: body.fuelType,
-  transmission: body.transmission,
-  color: body.color,
+  fuel_type: String(body.fuelType || "").trim(),
+  transmission: String(body.transmission || "").trim(),
+  color: String(body.color || "").trim(),
   images: Array.isArray(body.images) ? body.images : [],
-  condition: body.condition,
-  contact_number: body.contactNumber,
+  condition: String(body.condition || "").trim(),
+  contact_number: String(body.contactNumber || "").trim(),
   is_available: body.isAvailable ?? true,
 });
 
+const ALLOWED_FUEL_TYPES = ["Petrol", "Diesel", "Electric", "Hybrid"];
+const ALLOWED_TRANSMISSIONS = ["Automatic", "Manual"];
+const ALLOWED_CONDITIONS = ["New", "Used"];
+
 const validateCar = (car) => {
-  const requiredFields = [
-    "title",
-    "brand",
-    "model",
-    "year",
-    "price",
-    "mileage",
-    "fuel_type",
-    "transmission",
-    "color",
-    "condition",
-    "contact_number",
-  ];
+  const requiredStringFields = ["title", "brand", "model", "fuel_type", "transmission", "color", "condition", "contact_number"];
+  for (const field of requiredStringFields) {
+    if (!car[field]) {
+      const error = new Error(`Missing or empty field: ${field}`);
+      error.status = 400;
+      throw error;
+    }
+  }
 
-  const missingField = requiredFields.find((field) => car[field] === undefined || car[field] === "" || Number.isNaN(car[field]));
+  const numericFields = ["year", "price", "mileage"];
+  for (const field of numericFields) {
+    if (!Number.isFinite(car[field]) || car[field] < 0) {
+      const error = new Error(`Invalid numeric value for: ${field}`);
+      error.status = 400;
+      throw error;
+    }
+  }
 
-  if (missingField) {
-    const error = new Error(`Missing or invalid field: ${missingField}`);
+  const currentYear = new Date().getFullYear();
+  if (car.year < 1900 || car.year > currentYear + 1) {
+    const error = new Error(`Year must be between 1900 and ${currentYear + 1}`);
+    error.status = 400;
+    throw error;
+  }
+
+  if (!ALLOWED_FUEL_TYPES.includes(car.fuel_type)) {
+    const error = new Error(`fuel_type must be one of: ${ALLOWED_FUEL_TYPES.join(", ")}`);
+    error.status = 400;
+    throw error;
+  }
+
+  if (!ALLOWED_TRANSMISSIONS.includes(car.transmission)) {
+    const error = new Error(`transmission must be one of: ${ALLOWED_TRANSMISSIONS.join(", ")}`);
+    error.status = 400;
+    throw error;
+  }
+
+  if (!ALLOWED_CONDITIONS.includes(car.condition)) {
+    const error = new Error(`condition must be one of: ${ALLOWED_CONDITIONS.join(", ")}`);
     error.status = 400;
     throw error;
   }
@@ -64,15 +90,15 @@ const validateCar = (car) => {
 
 const sendError = (res, error, fallbackStatus = 500) => {
   const status = error.status || fallbackStatus;
-  res.status(status).json({ message: error.message });
+  const message = isProd && status === 500 ? "An unexpected error occurred" : error.message;
+  res.status(status).json({ error: message });
 };
 
 export async function getCar(req, res) {
   try {
     const cars = await supabaseRequest(`${table}?select=*&order=created_at.desc`);
-    res.status(200).json(cars.map(toClientCar));
+    res.status(200).json((cars || []).map(toClientCar));
   } catch (error) {
-    console.error("Supabase fetch error:", error);
     sendError(res, error);
   }
 }
@@ -91,8 +117,10 @@ export async function postCar(req, res) {
       body: JSON.stringify(car),
     });
 
-    res.status(201).json(toClientCar(savedCars[0]));
+    const returnedCar = (savedCars && savedCars.length) ? savedCars[0] : car;
+    res.status(201).json(toClientCar(returnedCar));
   } catch (error) {
+    console.error("postCar error:", error);
     sendError(res, error, 400);
   }
 }
@@ -100,6 +128,10 @@ export async function postCar(req, res) {
 export async function updateCar(req, res) {
   try {
     const { id } = req.params;
+    if (!id || id.length > 100) {
+      return res.status(400).json({ error: "Invalid car ID" });
+    }
+
     const car = toSupabaseCar(req.body || {});
     validateCar(car);
 
@@ -112,12 +144,14 @@ export async function updateCar(req, res) {
       body: JSON.stringify(car),
     });
 
-    if (!updatedCars.length) {
-      return res.status(404).json({ message: "Car not found" });
+    if (updatedCars !== null && !updatedCars.length) {
+      return res.status(404).json({ error: "Car not found" });
     }
 
-    res.status(200).json(toClientCar(updatedCars[0]));
+    const returnedCar = (updatedCars && updatedCars.length) ? updatedCars[0] : { ...car, id };
+    res.status(200).json(toClientCar(returnedCar));
   } catch (error) {
+    console.error("updateCar error:", error);
     sendError(res, error, 400);
   }
 }
@@ -125,6 +159,10 @@ export async function updateCar(req, res) {
 export async function deleteCar(req, res) {
   try {
     const { id } = req.params;
+    if (!id || id.length > 100) {
+      return res.status(400).json({ error: "Invalid car ID" });
+    }
+
     const deletedCars = await supabaseRequest(`${table}?id=eq.${encodeURIComponent(id)}`, {
       method: "DELETE",
       headers: {
@@ -132,12 +170,13 @@ export async function deleteCar(req, res) {
       },
     });
 
-    if (!deletedCars.length) {
-      return res.status(404).json({ message: "Car not found" });
+    if (deletedCars !== null && !deletedCars.length) {
+      return res.status(404).json({ error: "Car not found" });
     }
 
     res.status(200).json({ message: "Car deleted successfully" });
   } catch (error) {
+    console.error("deleteCar error:", error);
     sendError(res, error);
   }
 }

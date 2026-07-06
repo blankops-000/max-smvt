@@ -16,41 +16,18 @@ Required environment variables:
 - `ADMIN_USERNAME`: Optional. Defaults to `admin`.
 - `CORS_ORIGIN`: Frontend URL. Use a comma-separated list for multiple origins.
 
-Create this table in Supabase before starting the backend:
+Create this table in Supabase before starting the backend. The SQL is tracked in:
 
-```sql
-create table if not exists public.cars (
-  id uuid primary key default gen_random_uuid(),
-  title text not null,
-  brand text not null,
-  model text not null,
-  year integer not null,
-  price numeric not null,
-  mileage integer not null,
-  fuel_type text not null check (fuel_type in ('Petrol', 'Diesel', 'Electric', 'Hybrid')),
-  transmission text not null check (transmission in ('Manual', 'Automatic')),
-  color text not null,
-  images jsonb not null default '[]'::jsonb,
-  condition text not null check (condition in ('New', 'Used')),
-  contact_number text not null,
-  is_available boolean not null default true,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
+- `supabase/migrations/20260706090000_create_cars_table.sql`
 
-create or replace function public.set_updated_at()
-returns trigger as $$
-begin
-  new.updated_at = now();
-  return new;
-end;
-$$ language plpgsql;
+You can apply it from the Supabase SQL editor, or with the Supabase CLI after linking the project:
 
-drop trigger if exists cars_set_updated_at on public.cars;
-create trigger cars_set_updated_at
-before update on public.cars
-for each row execute function public.set_updated_at();
+```bash
+supabase link --project-ref <your-project-ref>
+supabase db push
 ```
+
+The migration creates the `public.cars` table, enables RLS, adds useful indexes, and keeps `updated_at` current with a trigger.
 
 Recommended Vercel settings:
 

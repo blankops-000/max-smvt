@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
 import { FaLock, FaUser } from 'react-icons/fa';
+import { API_URL } from './api';
 
 const AdminLogin = ({ onLogin }) => {
   const [credentials, setCredentials] = useState({ username: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-
-  const apiUrl = process.env.REACT_APP_API_URL || 'https://smvt-backend.onrender.com';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -14,7 +13,7 @@ const AdminLogin = ({ onLogin }) => {
     setLoading(true);
 
     try {
-      const response = await fetch(`${apiUrl}/api/auth/login`, {
+      const response = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(credentials)
