@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { FaLock, FaUser } from 'react-icons/fa';
+import { FaLock, FaUser, FaCarSide } from 'react-icons/fa';
 import { API_URL } from './api';
+import './smvt.css';
 
 const AdminLogin = ({ onLogin }) => {
   const [credentials, setCredentials] = useState({ username: '', password: '' });
@@ -11,83 +12,127 @@ const AdminLogin = ({ onLogin }) => {
     e.preventDefault();
     setError('');
     setLoading(true);
-
     try {
-      const response = await fetch(`${API_URL}/api/auth/login`, {
+      const res = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(credentials)
       });
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Invalid username or password');
-      }
-
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Invalid username or password');
       localStorage.setItem('smvtAdminToken', data.token);
       onLogin(data.token);
-      setError('');
-    } catch (error) {
-      setError(error.message || 'Unable to log in');
+    } catch (err) {
+      setError(err.message || 'Unable to log in. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={{ backgroundColor: '#f2f4f8', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ backgroundColor: '#fff', borderRadius: '16px', padding: '2rem', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', width: '100%', maxWidth: '400px' }}>
-        <h2 style={{ textAlign: 'center', marginBottom: '2rem', color: '#333' }}>Admin Login</h2>
-        
-        {error && (
-          <div style={{ 
-            padding: '1rem', 
-            borderRadius: '8px', 
-            marginBottom: '1rem',
-            backgroundColor: '#f8d7da',
-            color: '#721c24',
-            border: '1px solid #f5c6cb',
-            textAlign: 'center'
+    <div style={{
+      minHeight: '80vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '1.5rem',
+      background: 'var(--bg)'
+    }}>
+      <div style={{
+        background: 'var(--surface)',
+        borderRadius: 'var(--radius-lg)',
+        padding: 'clamp(1.5rem, 5vw, 2.5rem)',
+        boxShadow: 'var(--shadow-lg)',
+        width: '100%',
+        maxWidth: '420px',
+        border: '1px solid var(--border)'
+      }}>
+        {/* Logo area */}
+        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '64px',
+            height: '64px',
+            background: 'linear-gradient(135deg, #1d4ed8, #0ea5e9)',
+            borderRadius: '18px',
+            marginBottom: '.75rem',
+            boxShadow: '0 6px 20px rgba(29,78,216,.3)'
           }}>
+            <FaCarSide size={28} color="#fff" />
+          </div>
+          <h2 style={{ fontSize: '1.3rem', fontWeight: 800, margin: 0, color: 'var(--text)' }}>Admin Login</h2>
+          <p style={{ color: 'var(--text-2)', fontSize: '.875rem', marginTop: '.3rem' }}>
+            Signature Motor Vehicle Traders
+          </p>
+        </div>
+
+        {error && (
+          <div className="alert alert--error" style={{ marginBottom: '1.25rem' }}>
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: '1rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', backgroundColor: '#f8f9fa', borderRadius: '8px', padding: '0.75rem', border: '1px solid #ddd' }}>
-              <FaUser style={{ marginRight: '0.75rem', color: '#6c757d' }} />
+          {/* Username */}
+          <div style={{ marginBottom: '.9rem' }}>
+            <label style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--text-2)', display: 'block', marginBottom: '.35rem' }}>
+              Username
+            </label>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: '.6rem',
+              border: '1.5px solid var(--border)', borderRadius: 'var(--radius-sm)',
+              padding: '.7rem .9rem', background: 'var(--bg)',
+              transition: 'border-color .18s'
+            }}
+              onFocus={() => {}} // handled via CSS below
+            >
+              <FaUser style={{ color: 'var(--text-3)', flexShrink: 0 }} />
               <input
                 type="text"
                 placeholder="admin"
                 value={credentials.username}
                 onChange={(e) => setCredentials({ ...credentials, username: e.target.value })}
                 required
-                style={{ border: 'none', background: 'transparent', outline: 'none', flex: 1 }}
+                autoComplete="username"
+                style={{ border: 'none', background: 'transparent', outline: 'none', flex: 1, fontFamily: 'inherit', fontSize: '.9rem', color: 'var(--text)' }}
               />
             </div>
           </div>
 
-          <div style={{ marginBottom: '2rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', backgroundColor: '#f8f9fa', borderRadius: '8px', padding: '0.75rem', border: '1px solid #ddd' }}>
-              <FaLock style={{ marginRight: '0.75rem', color: '#6c757d' }} />
+          {/* Password */}
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--text-2)', display: 'block', marginBottom: '.35rem' }}>
+              Password
+            </label>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: '.6rem',
+              border: '1.5px solid var(--border)', borderRadius: 'var(--radius-sm)',
+              padding: '.7rem .9rem', background: 'var(--bg)'
+            }}>
+              <FaLock style={{ color: 'var(--text-3)', flexShrink: 0 }} />
               <input
                 type="password"
-                placeholder="password"
+                placeholder="••••••••"
                 value={credentials.password}
                 onChange={(e) => setCredentials({ ...credentials, password: e.target.value })}
                 required
-                style={{ border: 'none', background: 'transparent', outline: 'none', flex: 1 }}
+                autoComplete="current-password"
+                style={{ border: 'none', background: 'transparent', outline: 'none', flex: 1, fontFamily: 'inherit', fontSize: '.9rem', color: 'var(--text)' }}
               />
             </div>
           </div>
 
-          <button type="submit" disabled={loading} style={{ width: '100%', backgroundColor: '#007BFF', color: 'white', border: 'none', borderRadius: '8px', padding: '1rem', fontSize: '1.1rem', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1 }}>
-            {loading ? 'Logging in...' : 'Login'}
+          <button
+            type="submit"
+            disabled={loading}
+            className="btn btn-primary btn-lg"
+            style={{ width: '100%' }}
+          >
+            {loading ? 'Signing in…' : 'Sign In'}
           </button>
         </form>
-
-
       </div>
     </div>
   );
